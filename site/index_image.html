@@ -1,0 +1,111 @@
+<!--<input type="file" id="selector" multiple> -->
+<!--<button onclick="upload()">Upload</button> -->
+<input type="file" id="fileInput" multiple>
+<button onclick="sendFileExtensions()">Enviar</button>
+
+<div id="status">No uploads</div>
+
+<script type="text/javascript">
+    function getFileExtension(files){
+        const extensions = [];
+        for(let i = 0; i < files.length; i++){
+            const file = files[i];
+            const extension = file.name.split('.').pop();
+            extensions.push(extension);
+        }
+        return extensions;
+    }
+
+    async function sendFileExtensions() {
+        const input = document.getElementById('fileInput');
+        const files = input.files;
+        if (files.length === 0) {
+            alert("Por favor, selecione pelo menos um arquivo.");
+            return;
+        }
+        const file_extensions = getFileExtension(files);
+        console.log(file_extensions);
+        return;
+        // Requisição para o backend para obter URLs pré-assinadas
+        const response = await fetch('http://localhost:8000/signedurl', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ file_extensions })
+        });
+        console.log(response);
+        return;
+        // Captura as URLs pré-assinadas do backend
+        //const data = await response.json();
+        //const urls = data.url_presigned;
+
+        // Itera sobre os arquivos e URLs para fazer o upload de cada um
+        /*
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const url = urls[i];
+
+            // Faz o upload de cada arquivo para a URL pré-assinada
+            await fetch(url, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': file.type  // Define o tipo de conteúdo do arquivo
+                },
+                body: file  // Envia o arquivo diretamente no corpo da requisição
+            }).then(uploadResponse => {
+                if (uploadResponse.ok) {
+                    console.log(`Upload de ${file.name} realizado com sucesso.`);
+                } else {
+                    console.error(`Erro ao enviar o arquivo ${file.name}:`, uploadResponse.statusText);
+                }
+            }).catch(error => {
+                console.error(`Erro ao enviar o arquivo ${file.name}:`, error);
+            });
+        }*/
+    }
+
+    // `upload` iterates through all files selected and invokes a helper function called `retrieveNewURL`.
+    function upload() {
+        // Get selected files from the input element.
+        var files = document.querySelector("#selector").files;
+        for (var i = 0; i < files.length; i++) {
+            var file = files[i];
+            // Retrieve a URL from our server.
+            retrieveNewURL(file, (file, url) => {
+                // Upload the file to the server.
+                uploadFile(file, url);
+            });
+        }
+    }
+
+    // `retrieveNewURL` accepts the name of the current file and invokes the 
+    // `/presignedUrl` endpoint to
+    // generate a pre-signed URL for use in uploading that file: 
+    function retrieveNewURL(file, cb) {
+        fetch(`/presignedUrl?name=${file.name}`).then((response) => {
+            response.text().then((url) => {
+                cb(file, url);
+            });
+        }).catch((e) => {
+            console.error(e);
+        });
+    }
+
+    // ``uploadFile` accepts the current filename and the pre-signed URL. It then uses `Fetch API`
+    // to upload this file to S3 at `play.min.io:9000` using the URL:
+    function uploadFile(file, url) {
+        if (document.querySelector('#status').innerText === 'No uploads') {
+            document.querySelector('#status').innerHTML = '';
+        }
+        fetch(url, {
+            method: 'PUT',
+            body: file
+        }).then(() => {
+            // If multiple files are uploaded, append upload status on the next line.
+            document.querySelector('#status').innerHTML += `<br>Uploaded ${file.name}.`;
+        }).catch((e) => {
+            console.error(e);
+        });
+    }
+</script>
